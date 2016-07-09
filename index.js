@@ -25,7 +25,7 @@ var doTransform = (event, context, callback) => {
 }
 
 var doUpload = (event, context, callback) => {
-  var files = [];
+  var files = [], rstFiles = [];
   try {
     files = recursiveReadSync(`${cfg.basepath}/`);
   } catch (err) {
@@ -42,8 +42,14 @@ var doUpload = (event, context, callback) => {
 
   let s3 = require('./s3.js');
   var q = async.queue(function(f, cb) {
+    var myKey = f.replace('/tmp/', '');
+    if (myKey.indexOf('/svg-page') > 0 && myKey.indexOf('.svg') < 0) {
+      myKey = myKey + '.svg';
+    }
+
+    rstFiles.push(myKey);
     // console.log('uploading: ', f, cfg.bucket);
-    s3.upload(cfg.bucket, f.replace('/tmp/', ''), f, cb);
+    s3.upload(cfg.bucket, myKey, f, cb);
   }, 10);
 
   q.drain = (err, results) => {
@@ -52,12 +58,13 @@ var doUpload = (event, context, callback) => {
       return;
     }
 
-    rst = {
+    var rst = {
       success: true,
-      path: event.dest.replace('/tmp/', '')
+      path: event.dest.replace('/tmp/', ''),
+      files: rstFiles
     };
 
-    callback(null, JSON.stringify(rst, null, 2));
+    callback(null, JSON.stringify(rst));
   };
 
   for (var i = 0; i < files.length; i++) {
@@ -78,8 +85,6 @@ exports.handler = (event, context, callback) => {
   if (!event.dpi) {
     event.dpi = 150;
   }
-
-  event.dest = (event.dest || (event.queryParams || {}).dest) + '';
 
   var opt = urlParse.parse(event.url, true);
   var pathName = decodeURIComponent(opt.pathname);
