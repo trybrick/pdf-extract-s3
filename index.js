@@ -51,8 +51,8 @@ var doUpload = (event, context, callback) => {
       callback(err);
       return;
     }
-    
-    callback(null, `{ "success": true, "path": "${event.destPath}"}`);
+    var resultPath = event.destPath.replace('/tmp/', '').toLowerCase();
+    callback(null, `{ "success": true, "path": "${resultPath}"}`);
   };
 
   for(var i = 0; i < files.length; i++) {
