@@ -5,9 +5,9 @@ includedir=${prefix}/include
 
 Name: poppler-cpp
 Description: cpp backend for Poppler PDF rendering library
-Version: 0.37.0
+Version: 0.45.0
 Requires: 
-Requires.private: poppler = 0.37.0
+Requires.private: poppler = 0.45.0
 
 Libs: -L${libdir} -lpoppler-cpp
 Cflags: -I${includedir}/poppler/cpp

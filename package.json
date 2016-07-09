@@ -14,5 +14,13 @@
   "license": "PRIVATE",
   "bugs": {
     "url": "https://github.com/trybrick/pdf-extract-s3/issues"
+  },
+  "devDependencies": {
+    "async": "^2.0.0-rc.6",
+    "aws-sdk": "^2.4.6",
+    "mime": "^1.3.4",
+    "mkdirp": "^0.5.1",
+    "recursive-readdir-sync": "^1.0.6",
+    "request": "^2.72.0"
   }
 }
