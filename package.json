@@ -1,6 +1,6 @@
 {
   "name": "pdf-extract-s3",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "description": "AWS Lambda for extracting PDF to s3.",
   "main": "index.js",
   "scripts": {

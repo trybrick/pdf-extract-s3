@@ -12,7 +12,7 @@ let fs = require('fs');
 let recursiveReadSync = require('recursive-readdir-sync');
 let async = require('async');
 
-var processUrl = (event, context, callback) => {
+var doTransform = (event, context, callback) => {
   console.log('executing: ', event.cmd);
   const child = exec(event.cmd, (error) => {
     // Resolve with result of process
@@ -28,7 +28,7 @@ var doUpload = (event, context, callback) => {
   var files = [];
   try {
     files = recursiveReadSync(`${cfg.basepath}/`);
-  } catch(err){
+  } catch (err) {
     files = [];
     callback(err);
     return;
@@ -41,7 +41,7 @@ var doUpload = (event, context, callback) => {
   }
 
   let s3 = require('./s3.js');
-  var q = async.queue(function (f,cb) {
+  var q = async.queue(function(f, cb) {
     // console.log('uploading: ', f, cfg.bucket);
     s3.upload(cfg.bucket, f.replace('/tmp/', ''), f, cb);
   }, 10);
@@ -51,11 +51,16 @@ var doUpload = (event, context, callback) => {
       callback(err);
       return;
     }
-    var resultPath = event.dest.replace('/tmp/', '');
-    callback(null, `{ "success": true, "path": "${resultPath}"}`);
+
+    rst = {
+      success: true,
+      path: event.dest.replace('/tmp/', '')
+    };
+
+    callback(null, JSON.stringify(rst, null, 2));
   };
 
-  for(var i = 0; i < files.length; i++) {
+  for (var i = 0; i < files.length; i++) {
     q.push(files[i]);
   }
 }
@@ -68,39 +73,46 @@ exports.handler = (event, context, callback) => {
     context.fail('URL is invalid.');
     return;
   }
-
   event.url = decodeURIComponent(event.url.replace(/\+/g, ' '));
   event.dpi = parseInt(event.dpi || (event.queryParams || {}).dpi);
   if (!event.dpi) {
     event.dpi = 150;
   }
 
+  event.dest = (event.dest || (event.queryParams || {}).dest) + '';
+
   var opt = urlParse.parse(event.url, true);
-  var pathName = cfg.basepath + decodeURIComponent(opt.pathname);
+  var pathName = decodeURIComponent(opt.pathname);
   var destPath = path.dirname(pathName);
   var fileName = pathName.replace(destPath + '/', '');
 
-  // if no destpath, use parsed destpath
-  if (!event.dest) {
-    event.dest = destPath;
-  }
-  else {
-    // prefix with /tmp/pdf
-    event.dest = `${cfg.basepath}/${event.dest}`;
-  }
+  event.dest = (event.dest || (event.queryParams || {}).dest || destPath) + '';
 
-  // use pdf file name as path, change filename to index.pdf
-  event.dest = `${event.dest}/${fileName}/`.toLowerCase()
+  // prefix with basepath: /tmp/pdf
+  destPath = `${cfg.basepath}/${event.dest}`;
+
+  // use pdf file name as path and download as index.pdf
+  event.dest = `${destPath}/${fileName}/`.toLowerCase()
     .replace('.pdf', '/').replace(/\/+/gi, '/');
 
-  // generate shell cmd
+  // generate shell exec string
   event.cmd = `./index.sh "${event.dpi}" "${event.dest}"`;
+
+  // make directory before download
   mkdirp.sync(event.dest);
-  request({uri: event.url})
-      .pipe(fs.createWriteStream(event.dest + 'index.pdf'))
-      .on('close', function() {
-        processUrl(event, context, (err) => {
-          doUpload(event, context, callback);
-        });
+
+  // do download
+  request({ uri: event.url })
+    .pipe(fs.createWriteStream(event.dest + 'index.pdf'))
+    .on('close', function() {
+      doTransform(event, context, (err) => {
+        if (err) {
+          callback(err);
+          return;
+        }
+
+        // do upload if no error
+        doUpload(event, context, callback);
       });
+    });
 };
