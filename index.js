@@ -43,7 +43,7 @@ var doUpload = (event, context, callback) => {
   let s3 = require('./s3.js');
   var q = async.queue(function (f,cb) {
     // console.log('uploading: ', f, cfg.bucket);
-    s3.upload(cfg.bucket, f.replace('/tmp/', '').toLowerCase(), f, cb);
+    s3.upload(cfg.bucket, f.replace('/tmp/', ''), f, cb);
   }, 10);
 
   q.drain = (err, results) => {
@@ -51,7 +51,7 @@ var doUpload = (event, context, callback) => {
       callback(err);
       return;
     }
-    var resultPath = event.destPath.replace('/tmp/', '').toLowerCase();
+    var resultPath = event.dest.replace('/tmp/', '');
     callback(null, `{ "success": true, "path": "${resultPath}"}`);
   };
 
@@ -79,11 +79,25 @@ exports.handler = (event, context, callback) => {
   var pathName = cfg.basepath + decodeURIComponent(opt.pathname);
   var destPath = path.dirname(pathName);
   var fileName = pathName.replace(destPath + '/', '');
-  event.destPath = destPath;
-  event.cmd = `./index.sh "${fileName}" "${event.dpi}" "${destPath}"`;
-  mkdirp.sync(destPath);
+
+  // if no destpath, use parsed destpath
+  if (!event.dest) {
+    event.dest = destPath;
+  }
+  else {
+    // prefix with /tmp/pdf
+    event.dest = `${cfg.basepath}/${event.dest}`;
+  }
+
+  // use pdf file name as path, change filename to index.pdf
+  event.dest = `${event.dest}/${fileName}/`.toLowerCase()
+    .replace('.pdf', '/').replace(/\/+/gi, '/');
+
+  // generate shell cmd
+  event.cmd = `./index.sh "${event.dpi}" "${event.dest}"`;
+  mkdirp.sync(event.dest);
   request({uri: event.url})
-      .pipe(fs.createWriteStream(pathName))
+      .pipe(fs.createWriteStream(event.dest + 'index.pdf'))
       .on('close', function() {
         processUrl(event, context, (err) => {
           doUpload(event, context, callback);
