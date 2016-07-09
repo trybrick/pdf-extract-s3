@@ -9,6 +9,12 @@ module.exports = {
     var outfile = null,
       mimetype = null,
       stream = null;
+    var fileName = file;
+
+    if (file.indexOf('/svg-page') > 0 && file.indexOf('.svg') < 0) {
+      fileName = file + '.svg';
+      key = key + '.svg';
+    }
 
     try {
       stream = fs.createReadStream(file);
@@ -18,7 +24,7 @@ module.exports = {
     }
 
     try {
-      mimetype = mime.lookup(file) || 'application/octet-stream';
+      mimetype = mime.lookup(fileName) || 'application/octet-stream';
     } catch (e) {
       console.log(e);
       return cb(e);

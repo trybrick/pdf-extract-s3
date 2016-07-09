@@ -46,7 +46,14 @@ var doUpload = (event, context, callback) => {
     s3.upload(cfg.bucket, f.replace('/tmp/', '').toLowerCase(), f, cb);
   }, 10);
 
-  q.drain = callback;
+  q.drain = (err, results) => {
+    if (err) {
+      callback(err);
+      return;
+    }
+    
+    callback(null, `{ "success": true, "path": "${event.destPath}"}`);
+  };
 
   for(var i = 0; i < files.length; i++) {
     q.push(files[i]);
@@ -62,17 +69,18 @@ exports.handler = (event, context, callback) => {
     return;
   }
 
-  event.url = decodeURI(event.url);
+  event.url = decodeURIComponent(event.url.replace(/\+/g, ' '));
   event.dpi = parseInt(event.dpi || (event.queryParams || {}).dpi);
   if (!event.dpi) {
     event.dpi = 150;
   }
 
   var opt = urlParse.parse(event.url, true);
-  var pathName = cfg.basepath + opt.pathname;
+  var pathName = cfg.basepath + decodeURIComponent(opt.pathname);
   var destPath = path.dirname(pathName);
   var fileName = pathName.replace(destPath + '/', '');
-  event.cmd = `./index.sh "${event.url}" "${fileName}" "${event.dpi}" "${destPath}" ` + cfg.bucket;
+  event.destPath = destPath;
+  event.cmd = `./index.sh "${fileName}" "${event.dpi}" "${destPath}"`;
   mkdirp.sync(destPath);
   request({uri: event.url})
       .pipe(fs.createWriteStream(pathName))
