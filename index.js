@@ -73,7 +73,11 @@ var doUpload = (event, context, callback) => {
 }
 
 exports.handler = (event, context, callback) => {
-  event.url = (event.url || (event.queryParams || {}).url) + '';
+  // fix params
+  event.params = event.params || {};
+  event.params.querystring = event.params.querystring || {};
+
+  event.url = (event.url || event.params.querystring.url) + '';
   console.log('url: ', event.url);
 
   if (!/^(http|https)\:\/\//gmi.test(event.url)) {
@@ -81,7 +85,7 @@ exports.handler = (event, context, callback) => {
     return;
   }
   event.url = decodeURIComponent(event.url.replace(/\+/g, ' '));
-  event.dpi = parseInt(event.dpi || (event.queryParams || {}).dpi);
+  event.dpi = parseInt(event.dpi || event.params.querystring.dpi);
   if (!event.dpi) {
     event.dpi = 150;
   }
@@ -91,7 +95,7 @@ exports.handler = (event, context, callback) => {
   var destPath = path.dirname(pathName);
   var fileName = pathName.replace(destPath + '/', '');
 
-  event.dest = (event.dest || (event.queryParams || {}).dest || destPath) + '';
+  event.dest = (event.dest || event.params.querystring.dest || destPath) + '';
 
   // prefix with basepath: /tmp/pdf
   destPath = `${cfg.basepath}/${event.dest}`;
