@@ -64,7 +64,7 @@ var doUpload = (event, context, callback) => {
       files: rstFiles
     };
 
-    callback(null, JSON.stringify(rst));
+    callback(null, JSON.stringify(rst, null, 2));
   };
 
   for (var i = 0; i < files.length; i++) {
