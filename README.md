@@ -7,8 +7,8 @@ AWS Lambda for extracting PDF to s3
 3) Run poppler to:
   * extract embedded images with pattern: index-#pagenumber_#imagenumber.jpg
   * extract text and coordinates to: index.xml
-  * convert pdf to jpg with pattern: jpeg-page-#pagenumber.jpg
-  * convert pdf to svg with pattern: svg-page-#pagenumber.svg
+  * convert pdf to highres jpg with pattern: jpeg-1600-page-#pagenumber.jpg
+  * convert pdf to jpeg with pattern: jpeg-page-#pagenumber.jpg
 4) Upload to predefined s3 bucket - see Configuration
 
 ## Input/Parameters

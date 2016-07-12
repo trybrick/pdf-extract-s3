@@ -43,9 +43,6 @@ var doUpload = (event, context, callback) => {
   let s3 = require('./s3.js');
   var q = async.queue(function(f, cb) {
     var myKey = f.replace('/tmp/', '');
-    if (myKey.indexOf('/svg-page') > 0 && myKey.indexOf('.svg') < 0) {
-      myKey = myKey + '.svg';
-    }
 
     rstFiles.push(myKey);
     // console.log('uploading: ', f, cfg.bucket);
