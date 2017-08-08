@@ -71,6 +71,20 @@ var doUpload = ( event, context, callback ) => {
 }
 
 exports.handler = ( event, context, callback ) => {
+  // if s3 event
+  if ( event.Records && event.Records[ 0 ] ) {
+    const bucket = event.Records[ 0 ].s3.bucket.name;
+    const key = decodeURIComponent( event.Records[ 0 ].s3.object.key.replace( /\+/g, ' ' ) );
+
+    event.params = {
+      querystring: {
+        url: `https://s3-us-west-2.amazonaws.com/${bucket}/${key}`,
+        dpi: 72,
+        dest: 'bulk'
+      }
+    }
+  }
+
   // fix params
   event.params = event.params || {};
   event.params.querystring = event.params.querystring || {};
