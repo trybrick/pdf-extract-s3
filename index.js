@@ -89,11 +89,13 @@ exports.handler = ( event, context, callback ) => {
       Expires: signedUrlExpireSeconds
     } );
 
+    var basePath = path.dirname( '/' + key ).replace( "/archives/FTPRoot/", "/" );
+
     event.params = {
       querystring: {
         url: url,
         dpi: 72,
-        dest: bucket
+        dest: `${bucket}${basePath}`
       }
     }
   }
