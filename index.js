@@ -11,6 +11,8 @@ let mkdirp = require( 'mkdirp' );
 let fs = require( 'fs' );
 let recursiveReadSync = require( 'recursive-readdir-sync' );
 let async = require( 'async' );
+let AWS = require( 'aws-sdk' );
+let s3signer = new AWS.S3();
 
 var doTransform = ( event, context, callback ) => {
   console.log( 'executing: ', event.cmd );
@@ -41,6 +43,8 @@ var doUpload = ( event, context, callback ) => {
     return;
   }
 
+  console.log( 'begin upload to bucket: ', cfg.bucket );
+
   let s3 = require( './s3.js' );
   var q = async.queue( function ( f, cb ) {
     var myKey = f.replace( '/tmp/', '' );
@@ -51,6 +55,8 @@ var doUpload = ( event, context, callback ) => {
   }, 10 );
 
   q.drain = ( err, results ) => {
+    console.log( 'end upload to bucket: ', cfg.bucket );
+
     if ( err ) {
       callback( err );
       return;
@@ -75,12 +81,19 @@ exports.handler = ( event, context, callback ) => {
   if ( event.Records && event.Records[ 0 ] ) {
     const bucket = event.Records[ 0 ].s3.bucket.name;
     const key = decodeURIComponent( event.Records[ 0 ].s3.object.key.replace( /\+/g, ' ' ) );
+    const signedUrlExpireSeconds = 600;
+
+    const url = s3signer.getSignedUrl( 'getObject', {
+      Bucket: bucket,
+      Key: key,
+      Expires: signedUrlExpireSeconds
+    } );
 
     event.params = {
       querystring: {
-        url: `https://s3-us-west-2.amazonaws.com/${bucket}/${key}`,
+        url: url,
         dpi: 72,
-        dest: 'bulk'
+        dest: bucket
       }
     }
   }
@@ -96,7 +109,7 @@ exports.handler = ( event, context, callback ) => {
     context.fail( 'URL is invalid.' );
     return;
   }
-  event.url = decodeURIComponent( event.url.replace( /\+/g, ' ' ) );
+
   event.dpi = parseInt( event.dpi || event.params.querystring.dpi );
   event.width = parseInt( event.width || event.params.querystring.width || 1600 );
   if ( !event.dpi ) {
@@ -115,8 +128,7 @@ exports.handler = ( event, context, callback ) => {
   destPath = `${cfg.basepath}/${event.dest}`;
 
   // use pdf file name as path and download as index.pdf
-  event.dest = `${destPath}/${fileName}/`.toLowerCase()
-    .replace( '.pdf', '/' ).replace( /\/+/gi, '/' );
+  event.dest = `${destPath}/${fileName}/`.replace( '.pdf', '/' ).replace( /\/+/gi, '/' );
 
   // generate shell exec string
   event.cmd = `./index.sh "${event.dpi}" "${event.dest}" ${event.width} "${legacyName}.jpg"`;
@@ -132,12 +144,16 @@ exports.handler = ( event, context, callback ) => {
     .on( 'close', function () {
       doTransform( event, context, ( err ) => {
         if ( err ) {
-          callback( err );
+          console.log( err );
+          callback( null, err );
           return;
         }
 
         // do upload if no error
-        doUpload( event, context, callback );
+        doUpload( event, context, ( err ) => {
+          console.log( err );
+          callback( null, err );
+        } );
       } );
     } );
 };

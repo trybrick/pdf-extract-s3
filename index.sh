@@ -10,5 +10,5 @@ $cwd/bin/pdftoppm -jpeg -r $file_dpi -scale-to-x 1200 index.pdf jpeg-1200-page
 $cwd/bin/pdftoppm -jpeg -r $file_dpi -scale-to-x $width index.pdf "jpeg-$width-page"
 $cwd/bin/pdftohtml -p -xml -hidden index.pdf
 $cwd/bin/pdftoppm -r $file_dpi index.pdf ppm-page
-cp jpeg-1200-page-1.jpg index.jpg
-cp jpeg-1200-page-1.jpg "$filename"
+cp -f jpeg-1200-page-1.jpg index.jpg
+cp -f jpeg-1200-page-1.jpg "$filename"
